@@ -8,10 +8,18 @@
 #include <direct.h>
 #endif
 
+// Colors
+#define RESET "\033[0m"
+#define RED "\033[31m"
+#define GREEN "\033[32m"
+#define YELLOW "\033[33m"
+#define BLUE "\033[34m"
+#define CYAN "\033[36m"
+#define BOLD "\033[1m"
+
 void remove_newline(char *str) { str[strcspn(str, "\n")] = '\0'; }
 
 int is_empty(const char *s) { return s[0] == '\0'; }
-
 int is_dot(const char *s) { return strcmp(s, ".") == 0; }
 
 int directory_exists(const char *path) {
@@ -26,50 +34,51 @@ typedef struct {
 
 void get_folder_path(project_t *project, char *buffer, int size) {
 
-  // Case 1: blank → "./folder"
-  if (is_empty(project->root_path)) {
+  if (is_empty(project->root_path) || is_dot(project->root_path)) {
     snprintf(buffer, size, "./%s", project->folder_name);
     return;
   }
 
-  // Case 2: "." → "./folder"
-  if (is_dot(project->root_path)) {
-    snprintf(buffer, size, "./%s", project->folder_name);
-    return;
-  }
-
-  // Case 3: root ends with "/"
   int last = strlen(project->root_path) - 1;
   if (last >= 0 && project->root_path[last] == '/') {
     snprintf(buffer, size, "%s%s", project->root_path, project->folder_name);
     return;
   }
 
-  // Case 4: normal path → add "/"
   snprintf(buffer, size, "%s/%s", project->root_path, project->folder_name);
 }
 
-// ---------------------- Steps ----------------------
+void section(const char *title) {
+  printf("\n" BLUE "--------------------------------------------\n" RESET);
+  printf(BOLD "%s\n" RESET, title);
+  printf(BLUE "--------------------------------------------\n" RESET);
+}
 
 void process_step_1(project_t *project) {
-  printf("Enter root path (blank or '.' = current directory): ");
+  section("🚀 maker-cli — Project Setup");
+
+  section("📂 Step 1: Enter Project Details");
+
+  printf(YELLOW "➤ Root path (blank or '.' = current directory): " RESET);
   fgets(project->root_path, sizeof(project->root_path), stdin);
 
-  printf("Enter folder name: ");
+  printf(YELLOW "➤ Folder name: " RESET);
   fgets(project->folder_name, sizeof(project->folder_name), stdin);
 
   remove_newline(project->root_path);
   remove_newline(project->folder_name);
 
-  printf("Root: \"%s\"\n", project->root_path);
-  printf("Folder: \"%s\"\n", project->folder_name);
+  printf("\n📁 Root: \"%s\"\n", project->root_path);
+  printf("📁 Folder: \"%s\"\n", project->folder_name);
 }
 
 void process_step_2(project_t *project) {
+  section("🛠 Step 2: Creating Project Folder");
+
   char folder_path[300];
   get_folder_path(project, folder_path, sizeof(folder_path));
 
-  printf("Resolved path: %s\n", folder_path);
+  printf("📌 Resolved path: %s\n", folder_path);
 
   if (!directory_exists(folder_path)) {
 
@@ -79,18 +88,17 @@ void process_step_2(project_t *project) {
     mkdir(folder_path, 0777);
 #endif
 
-    printf("Created directory: %s\n", folder_path);
+    printf(GREEN "✔ Created directory: %s\n" RESET, folder_path);
   } else {
-    printf("Directory already exists: %s\n", folder_path);
+    printf(YELLOW "⚠ Directory already exists. Skipping.\n" RESET);
   }
 }
 
 void place_file(project_t *project, const char *type) {
   char folder_path[300];
-  get_folder_path(project, folder_path, sizeof(folder_path)); // root + folder
+  get_folder_path(project, folder_path, sizeof(folder_path));
 
   char command[500];
-
   const char *repo = strcmp(type, "ts") == 0
                          ? "https://github.com/Hayat4144/folder-cleaner.git"
                          : "https://github.com/Hayat4144/text-editor.git";
@@ -98,49 +106,50 @@ void place_file(project_t *project, const char *type) {
   snprintf(command, sizeof(command), "git clone \"%s\" \"%s\"", repo,
            folder_path);
 
-  printf("Executing: %s\n", command);
+  printf("\n🔽 Executing: %s\n", command);
 
   int result = system(command);
 
-  if (result != 0) {
-    printf("❌ Git clone failed\n");
-  } else {
-    printf("✔ Clone success\n");
-  }
+  if (result != 0)
+    printf(RED "❌ Git clone failed\n" RESET);
+  else
+    printf(GREEN "✔ Clone success\n" RESET);
 }
 
 void process_step_3(project_t *project) {
-  printf("Choose language:\n");
-  printf("1. JavaScript\n");
-  printf("2. TypeScript\n");
-  printf("Enter 1/2 or js/ts: ");
+  section("💻 Step 3: Choose Language");
+
+  printf("→ 1. JavaScript\n");
+  printf("→ 2. TypeScript\n");
+
+  printf(YELLOW "➤ Enter 1/2 or js/ts: " RESET);
 
   char input[20];
   fgets(input, sizeof(input), stdin);
   remove_newline(input);
 
   if (strcmp(input, "1") == 0 || strcmp(input, "js") == 0) {
-    printf("JavaScript selected\n");
+    printf(GREEN "\n✨ JavaScript selected\n" RESET);
     place_file(project, "js");
+
   } else if (strcmp(input, "2") == 0 || strcmp(input, "ts") == 0) {
-    printf("TypeScript selected\n");
+    printf(GREEN "\n✨ TypeScript selected\n" RESET);
     place_file(project, "ts");
+
   } else {
-    printf("Invalid choice\n");
+    printf(RED "❌ Invalid choice\n" RESET);
   }
 }
 
 // ---------------------- Main ----------------------
 
 int main(void) {
-  printf("Welcome to the project setup!\n");
-
   project_t project = {0};
 
   process_step_1(&project);
   process_step_2(&project);
   process_step_3(&project);
 
-  printf("Done.\n");
+  printf(GREEN "\n🎉 Done. Your project is ready!\n" RESET);
   return EXIT_SUCCESS;
 }
